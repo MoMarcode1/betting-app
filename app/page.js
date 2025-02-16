@@ -2,15 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 
-// Predefined users
-const USERS = {
-  user1: { password: 'pass1', name: 'John' },
-  user2: { password: 'pass2', name: 'Emma' },
-  user3: { password: 'pass3', name: 'Mike' },
-  user4: { password: 'pass4', name: 'Sarah' },
-  user5: { password: 'pass5', name: 'David' }
-};
-
 const getLocalStorage = (key) => {
   if (typeof window === 'undefined') return null;
   const item = window.localStorage.getItem(key);
@@ -26,16 +17,20 @@ const BettingApp = () => {
     isLoggedIn: false,
     user: null
   });
+  
   const [formData, setFormData] = useState({
     username: '',
     password: '',
+    name: '',
     betTitle: '',
     betPoints: 1
   });
+
   const [bets, setBets] = useState([]);
   const [showNewBet, setShowNewBet] = useState(false);
   const [error, setError] = useState('');
   const [notification, setNotification] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
 
   useEffect(() => {
     const user = getLocalStorage('user');
@@ -60,14 +55,45 @@ const BettingApp = () => {
     }
   }, [error]);
 
+  const handleRegister = () => {
+    const { username, password, name } = formData;
+    
+    if (!username || !password || !name) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
+
+    const users = getLocalStorage('users') || {};
+    if (users[username]) {
+      setError('Username already taken');
+      return;
+    }
+
+    const newUser = { password, name };
+    const updatedUsers = { ...users, [username]: newUser };
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+
+    const userData = { username, name };
+    setAuth({ isLoggedIn: true, user: userData });
+    localStorage.setItem('user', JSON.stringify(userData));
+    setNotification('Registration successful!');
+  };
+
   const handleLogin = () => {
     const { username, password } = formData;
-    const user = USERS[username];
     
     if (!username || !password) {
       setError('Please enter both username and password');
       return;
     }
+
+    const users = getLocalStorage('users') || {};
+    const user = users[username];
 
     if (user && user.password === password) {
       const userData = { username, name: user.name };
@@ -82,7 +108,7 @@ const BettingApp = () => {
   const handleLogout = () => {
     setAuth({ isLoggedIn: false, user: null });
     localStorage.removeItem('user');
-    setFormData({ username: '', password: '', betTitle: '', betPoints: 1 });
+    setFormData({ username: '', password: '', name: '', betTitle: '', betPoints: 1 });
   };
 
   const handleCreateBet = () => {
@@ -161,36 +187,94 @@ const BettingApp = () => {
     localStorage.setItem('bets', JSON.stringify(updatedBets));
     setNotification('Bet resolved successfully!');
   };
-
-  if (!auth.isLoggedIn) {
+if (!auth.isLoggedIn) {
     return (
       <div className="min-h-screen bg-gray-50 p-4">
         <div className="max-w-md mx-auto mt-8 bg-white rounded-lg shadow-md p-6">
           <h1 className="text-2xl font-bold text-center mb-6 text-blue-900">M&W Wetten</h1>
           <div className="space-y-4">
-            <input
-              type="text"
-              placeholder="Username"
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={formData.username}
-              onChange={e => setFormData({ ...formData, username: e.target.value })}
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={formData.password}
-              onChange={e => setFormData({ ...formData, password: e.target.value })}
-            />
-            <button 
-              className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition-colors"
-              onClick={handleLogin}
-            >
-              Login
-            </button>
+            {isRegistering ? (
+              <>
+                <input
+                  type="text"
+                  placeholder="Full Name"
+                  className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={formData.name}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })}
+                />
+                <input
+                  type="text"
+                  placeholder="Choose Username"
+                  className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={formData.username}
+                  onChange={e => setFormData({ ...formData, username: e.target.value })}
+                />
+                <input
+                  type="password"
+                  placeholder="Choose Password"
+                  className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={formData.password}
+                  onChange={e => setFormData({ ...formData, password: e.target.value })}
+                />
+                <button 
+                  className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition-colors"
+                  onClick={handleRegister}
+                >
+                  Register
+                </button>
+                <button 
+                  className="w-full text-blue-600 p-2 hover:underline"
+                  onClick={() => {
+                    setIsRegistering(false);
+                    setFormData({ ...formData, username: '', password: '', name: '' });
+                    setError('');
+                  }}
+                >
+                  Already have an account? Login
+                </button>
+              </>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  placeholder="Username"
+                  className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={formData.username}
+                  onChange={e => setFormData({ ...formData, username: e.target.value })}
+                />
+                <input
+                  type="password"
+                  placeholder="Password"
+                  className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={formData.password}
+                  onChange={e => setFormData({ ...formData, password: e.target.value })}
+                />
+                <button 
+                  className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition-colors"
+                  onClick={handleLogin}
+                >
+                  Login
+                </button>
+                <button 
+                  className="w-full text-blue-600 p-2 hover:underline"
+                  onClick={() => {
+                    setIsRegistering(true);
+                    setFormData({ ...formData, username: '', password: '', name: '' });
+                    setError('');
+                  }}
+                >
+                  New user? Register here
+                </button>
+              </>
+            )}
             {error && (
               <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
                 {error}
+              </div>
+            )}
+            {notification && (
+              <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative">
+                {notification}
               </div>
             )}
           </div>
